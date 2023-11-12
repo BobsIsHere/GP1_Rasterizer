@@ -30,6 +30,14 @@ namespace dae
 		void Update(Timer* pTimer);
 		void Render();
 
+		void Render_W1_Part1();
+		void Render_W1_Part2();
+		void Render_W1_Part3();
+		void Render_W1_Part4();
+		void Render_W1_Part5();
+
+		float Calculate2DCrossProduct(const Vector3& a, const Vector3& b, const Vector3& c);
+
 		bool SaveBufferToImage() const;
 
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
