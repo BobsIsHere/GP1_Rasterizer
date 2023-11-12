@@ -44,8 +44,8 @@ void Renderer::Render()
 	SDL_LockSurface(m_pBackBuffer);
 
 	//Render_W1_Part1();		//rasterizer stage only
-	Render_W1_Part2();		//projection stage (camera)
-	//Render_W1_Part3();		//barycentric coordinates
+	//Render_W1_Part2();		//projection stage (camera)
+	Render_W1_Part3();		//barycentric coordinates
 	//Render_W1_Part4();		//depth buffer
 	//Render_W1_Part5();		//boundingbox optimization
 
@@ -186,7 +186,60 @@ void Renderer::Render_W1_Part2()
 
 void Renderer::Render_W1_Part3()
 {
+	//define triangle - vertices in WOLRD space
+	bool isIntriangle{ false };
+	std::vector<Vertex> vertices_world
+	{
+		{{0.f, 4.f, 2.f}, {1, 0, 0}},
+		{{3.f, -2.f, 2.f}, {0, 1, 0}},
+		{{-3.f, -2.f, 2.f}, {0, 0, 1}}
+	};
 
+	std::vector<Vertex> vertices_transformed{};
+	vertices_transformed.reserve(vertices_world.size());
+
+	VertexTransformationFunction(vertices_world, vertices_transformed);
+
+	//go over each pixel is in screen space
+	for (int px{}; px < m_Width; ++px)
+	{
+		for (int py{}; py < m_Height; ++py)
+		{
+			//define current pixel in screen space
+			const Vector3 P{ px + 0.5f, py + 0.5f, 0.f };
+			ColorRGB finalColour{ 0.f, 0.f, 0.f };
+
+			if (Calculate2DCrossProduct(vertices_transformed[2].position, vertices_transformed[1].position, P) < 0.f ||
+				Calculate2DCrossProduct(vertices_transformed[1].position, vertices_transformed[0].position, P) < 0.f ||
+				Calculate2DCrossProduct(vertices_transformed[0].position, vertices_transformed[2].position, P) < 0.f)
+			{
+				isIntriangle = false;
+			}
+			else
+			{
+				isIntriangle = true;
+			}
+
+			if (isIntriangle)
+			{
+				const float w0{ Calculate2DCrossProduct(vertices_transformed[1].position, vertices_transformed[2].position, P) };
+				const float w1{ Calculate2DCrossProduct(vertices_transformed[2].position, vertices_transformed[0].position, P) };
+				const float w2{ Calculate2DCrossProduct(vertices_transformed[0].position, vertices_transformed[1].position, P) };
+				const float triangleArea{ Calculate2DCrossProduct(vertices_transformed[0].position, vertices_transformed[1].position, vertices_transformed[2].position) };
+
+				finalColour = { vertices_transformed[0].color * (w0 / triangleArea) +
+								vertices_transformed[1].color * (w1 / triangleArea) +
+								vertices_transformed[2].color * (w2 / triangleArea) };
+			}
+
+			finalColour.MaxToOne();
+
+			m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+				static_cast<uint8_t>(finalColour.r * 255),
+				static_cast<uint8_t>(finalColour.g * 255),
+				static_cast<uint8_t>(finalColour.b * 255));
+		}
+	}
 }
 
 void Renderer::Render_W1_Part4()
