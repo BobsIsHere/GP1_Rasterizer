@@ -29,6 +29,7 @@ namespace dae
 
 		float totalPitch{};
 		float totalYaw{};
+		float speed{ 10.f };
 
 		Matrix invViewMatrix{};
 		Matrix viewMatrix{};
@@ -43,12 +44,24 @@ namespace dae
 
 		void CalculateViewMatrix()
 		{
-			//TODO W1
 			//ONB => invViewMatrix
 			//Inverse(ONB) => ViewMatrix
+			Matrix rotation{ Matrix::CreateRotationX(- totalPitch * TO_RADIANS) * Matrix::CreateRotationY(totalYaw * TO_RADIANS) };
+
+			forward = rotation.TransformVector(Vector3::UnitZ);
+			right = Vector3::Cross(Vector3::UnitY, forward).Normalized();
+			up = Vector3::Cross(forward, right).Normalized();
+
+			invViewMatrix = {
+				Vector4{right, 0},
+				Vector4{up, 0},
+				Vector4{forward, 0},
+				Vector4{origin, 1}
+			};
 
 			//ViewMatrix => Matrix::CreateLookAtLH(...) [not implemented yet]
-			//DirectX Implementation => https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dxmatrixlookatlh
+			//viewMatrix = Matrix::CreateLookAtLH(origin, forward, up);
+			viewMatrix = invViewMatrix.Inverse();
 		}
 
 		void CalculateProjectionMatrix()
@@ -63,8 +76,55 @@ namespace dae
 		{
 			const float deltaTime = pTimer->GetElapsed();
 
-			//Camera Update Logic
-			//...
+			//keyboard input
+			const uint8_t* pKeyboardState = SDL_GetKeyboardState(nullptr);
+
+			if (pKeyboardState[SDL_SCANCODE_W])
+			{
+				origin += forward * speed * deltaTime;
+			}
+			else if (pKeyboardState[SDL_SCANCODE_S])
+			{
+				origin -= forward * speed * deltaTime;
+			}
+			else if (pKeyboardState[SDL_SCANCODE_D])
+			{
+				origin += right * speed * deltaTime;
+			}
+			else if (pKeyboardState[SDL_SCANCODE_A])
+			{
+				origin -= right * speed * deltaTime;
+			}
+
+			//mouse input
+			int mouseX{}, mouseY{};
+			const uint32_t mouseState = SDL_GetRelativeMouseState(&mouseX, &mouseY);
+
+			if ((mouseState & SDL_BUTTON_RMASK) != 0 && !(mouseState & SDL_BUTTON_LMASK) != 0)
+			{
+				// Right mouse button is pressed
+				totalYaw += mouseX;
+				totalPitch += mouseY;
+			}
+
+			if ((mouseState & SDL_BUTTON_LMASK) != 0 && (mouseState & SDL_BUTTON_RMASK) != 0)
+			{
+				origin += up * speed * mouseY * deltaTime;
+			}
+			else if ((mouseState & SDL_BUTTON_LMASK) != 0)
+			{
+				if (mouseY < 0)
+				{
+					origin += forward * speed * deltaTime;
+				}
+				else if (mouseY > 0)
+				{
+					origin -= forward * speed * deltaTime;
+				}
+
+				// Right mouse button is pressed
+				totalYaw += mouseX;
+			}
 
 			//Update Matrices
 			CalculateViewMatrix();
