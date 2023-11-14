@@ -46,8 +46,8 @@ void Renderer::Render()
 	//Render_W1_Part1();		//rasterizer stage only
 	//Render_W1_Part2();		//projection stage (camera)
 	//Render_W1_Part3();		//barycentric coordinates
-	Render_W1_Part4();		//depth buffer
-	//Render_W1_Part5();		//boundingbox optimization
+	//Render_W1_Part4();		//depth buffer
+	Render_W1_Part5();		//boundingbox optimization
 
 	//RENDER LOGIC
 	//for (int px{}; px < m_Width; ++px)
@@ -329,7 +329,107 @@ void Renderer::Render_W1_Part4()
 
 void Renderer::Render_W1_Part5()
 {
+	//define triangle - vertices in WORLD space
+	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
 
+	const std::vector<Vertex> vertices_world
+	{
+		//Triangle 0 
+		{{0.f, 2.f, 0.f}, {1, 0, 0}},
+		{{1.5f, -1.f, 0.f}, {1, 0, 0}},
+		{{-1.5f, -1.f, 0.f}, {1, 0, 0}},
+		//Triangle 1
+		{{0.f, 4.f, 2.f}, {1, 0, 0}},
+		{{3.f, -2.f, 2.f}, {0, 1, 0}},
+		{{-3.f, -2.f, 2.f}, {0, 0, 1}},
+	};
+
+	std::vector<Vertex> vertices_transformed{};
+	vertices_transformed.reserve(vertices_world.size());
+
+	VertexTransformationFunction(vertices_world, vertices_transformed);
+
+	//clear back buffer
+	SDL_FillRect(m_pBackBuffer, &m_pBackBuffer->clip_rect, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
+
+	//go over triangle, per 3 vertices
+	for (int triangleIdx{}; triangleIdx < vertices_transformed.size(); triangleIdx += 3)
+	{
+		//calculate bounding box for the current triangle in screen space
+		const Vector2 v0{ vertices_transformed[triangleIdx].position.x , vertices_transformed[triangleIdx].position.y };
+		const Vector2 v1{ vertices_transformed[triangleIdx + 1].position.x,  vertices_transformed[triangleIdx + 1].position.y };
+		const Vector2 v2{ vertices_transformed[triangleIdx + 2].position.x, vertices_transformed[triangleIdx + 2].position.y };
+
+		//calculate min & max x of bounding box, clamped to screen
+		const int minX{ static_cast<int>(std::max(0.0f, std::min({ v0.x, v1.x, v2.x }))) };
+		const int maxX{ static_cast<int>(std::min(static_cast<float>(m_Width - 1), std::max({ v0.x, v1.x, v2.x }))) };
+		//calculate min & max y of bounding box, clamped to screen
+		const int minY{ static_cast<int>(std::max(0.0f, std::min({ v0.y, v1.y, v2.y }))) };
+		const int maxY{ static_cast<int>(std::min(static_cast<float>(m_Height - 1), std::max({ v0.y, v1.y, v2.y }))) };
+
+
+		//go over each pixel is in screen space
+		for (int px{minX}; px < maxX; ++px)
+		{
+			for (int py{minY}; py < maxY; ++py)
+			{
+				//define current pixel in screen space
+				const Vector3 P{ px + 0.5f, py + 0.5f, 0.f };
+				ColorRGB finalColour{ 0.f, 0.f, 0.f };
+
+				if (IsPixelInTriangle(P,vertices_transformed, triangleIdx))
+				{
+					const float w0{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 1].position, vertices_transformed[triangleIdx + 2].position, P) };
+					const float w1{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 2].position, vertices_transformed[triangleIdx + 0].position, P) };
+					const float w2{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 0].position, vertices_transformed[triangleIdx + 1].position, P) };
+					const float triangleArea{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 0].position,
+																      vertices_transformed[triangleIdx + 1].position,
+																	  vertices_transformed[triangleIdx + 2].position) };
+
+					//interpolate depth value
+					const int bufferIdx{ px + (py * m_Width) };
+					const float interpolateDepth{ 1.f / (w0 * vertices_transformed[triangleIdx + 0].position.z +
+												  w1 * vertices_transformed[triangleIdx + 1].position.z +
+												  w2 * vertices_transformed[triangleIdx + 2].position.z) };
+
+
+					if (interpolateDepth < m_pDepthBufferPixels[bufferIdx])
+					{
+						m_pDepthBufferPixels[bufferIdx] = interpolateDepth;
+
+						finalColour = { vertices_transformed[triangleIdx + 0].color * (w0 / triangleArea) +
+										vertices_transformed[triangleIdx + 1].color * (w1 / triangleArea) +
+										vertices_transformed[triangleIdx + 2].color * (w2 / triangleArea) };
+
+						finalColour.MaxToOne();
+
+						m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+							static_cast<uint8_t>(finalColour.r * 255),
+							static_cast<uint8_t>(finalColour.g * 255),
+							static_cast<uint8_t>(finalColour.b * 255));
+					}
+				}
+			}
+		}
+	}
+}
+
+bool Renderer::IsPixelInTriangle(const Vector3& p, const std::vector<Vertex>& vertex, const int index)
+{
+	if (Calculate2DCrossProduct(vertex[index + 2].position, vertex[index + 1].position, p) < 0.f)
+	{
+		return false;
+	}
+	else if (Calculate2DCrossProduct(vertex[index + 1].position, vertex[index + 0].position, p) < 0.f)
+	{
+		return false;
+	}
+	else if (Calculate2DCrossProduct(vertex[index + 0].position, vertex[index + 2].position, p) < 0.f)
+	{
+		return false;
+	}
+
+	return true;
 }
 
 float Renderer::Calculate2DCrossProduct(const Vector3& a, const Vector3& b, const Vector3& c)

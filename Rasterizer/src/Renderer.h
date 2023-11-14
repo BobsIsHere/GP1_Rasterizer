@@ -42,6 +42,7 @@ namespace dae
 		//------ Own Functions ------
 		float Calculate2DCrossProduct(const Vector3& a, const Vector3& b, const Vector3& c);
 		float Calculate2DCrossProduct(const Vector2& a, const Vector2& b, const Vector2& c);
+		bool IsPixelInTriangle(const Vector3& p, const std::vector<Vertex>& vertex, const int index);
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
 
 	private:
