@@ -47,7 +47,8 @@ void Renderer::Render()
 	//Render_W1_Part2();		//projection stage (camera)
 	//Render_W1_Part3();		//barycentric coordinates
 	//Render_W1_Part4();		//depth buffer
-	Render_W1_Part5();		//boundingbox optimization
+	//Render_W1_Part5();		//boundingbox optimization
+	Render_W2();
 
 	//RENDER LOGIC
 	//for (int px{}; px < m_Width; ++px)
@@ -101,13 +102,13 @@ void Renderer::Render_W1_Part1()
 		for (int py{}; py < m_Height; ++py)
 		{
 			//define current pixel in screen space
-			const Vector3 P{ px + 0.5f, py + 0.5f, 0.f };
+			const Vector2 p{ px + 0.5f, py + 0.5f };
 			ColorRGB finalColour{ 0.f, 0.f, 0.f };
 
 			//check if pixel is inside triangle
-			if (Calculate2DCrossProduct(vertices_ndc[2], vertices_ndc[1], P) < 0.f ||
-				Calculate2DCrossProduct(vertices_ndc[1], vertices_ndc[0], P) < 0.f ||
-				Calculate2DCrossProduct(vertices_ndc[0], vertices_ndc[2], P) < 0.f)
+			if (Calculate2DCrossProduct(vertices_ndc[2], vertices_ndc[1], p) < 0.f ||
+				Calculate2DCrossProduct(vertices_ndc[1], vertices_ndc[0], p) < 0.f ||
+				Calculate2DCrossProduct(vertices_ndc[0], vertices_ndc[2], p) < 0.f)
 			{
 				isInTraingle = false;
 			}
@@ -154,13 +155,13 @@ void Renderer::Render_W1_Part2()
 		for (int py{}; py < m_Height; ++py)
 		{
 			//define current pixel in screen space
-			const Vector3 P{ px + 0.5f, py + 0.5f, 0.f };
+			const Vector2 p{ px + 0.5f, py + 0.5f };
 			ColorRGB finalColour{ 0.f, 0.f, 0.f };
 
 			//check if pixel is inside triangle
-			if (Calculate2DCrossProduct(vertices_transformed[2].position, vertices_transformed[1].position, P) < 0.f ||
-				Calculate2DCrossProduct(vertices_transformed[1].position, vertices_transformed[0].position, P) < 0.f ||
-				Calculate2DCrossProduct(vertices_transformed[0].position, vertices_transformed[2].position, P) < 0.f)
+			if (Calculate2DCrossProduct(vertices_transformed[2].position, vertices_transformed[1].position, p) < 0.f ||
+				Calculate2DCrossProduct(vertices_transformed[1].position, vertices_transformed[0].position, p) < 0.f ||
+				Calculate2DCrossProduct(vertices_transformed[0].position, vertices_transformed[2].position, p) < 0.f)
 			{
 				isInTraingle = false;
 			}
@@ -206,12 +207,12 @@ void Renderer::Render_W1_Part3()
 		for (int py{}; py < m_Height; ++py)
 		{
 			//define current pixel in screen space
-			const Vector3 P{ px + 0.5f, py + 0.5f, 0.f };
+			const Vector2 p{ px + 0.5f, py + 0.5f };
 			ColorRGB finalColour{ 0.f, 0.f, 0.f };
 
-			if (Calculate2DCrossProduct(vertices_transformed[2].position, vertices_transformed[1].position, P) < 0.f ||
-				Calculate2DCrossProduct(vertices_transformed[1].position, vertices_transformed[0].position, P) < 0.f ||
-				Calculate2DCrossProduct(vertices_transformed[0].position, vertices_transformed[2].position, P) < 0.f)
+			if (Calculate2DCrossProduct(vertices_transformed[2].position, vertices_transformed[1].position, p) < 0.f ||
+				Calculate2DCrossProduct(vertices_transformed[1].position, vertices_transformed[0].position, p) < 0.f ||
+				Calculate2DCrossProduct(vertices_transformed[0].position, vertices_transformed[2].position, p) < 0.f)
 			{
 				isIntriangle = false;
 			}
@@ -222,14 +223,20 @@ void Renderer::Render_W1_Part3()
 
 			if (isIntriangle)
 			{
-				const float w0{ Calculate2DCrossProduct(vertices_transformed[1].position, vertices_transformed[2].position, P) };
-				const float w1{ Calculate2DCrossProduct(vertices_transformed[2].position, vertices_transformed[0].position, P) };
-				const float w2{ Calculate2DCrossProduct(vertices_transformed[0].position, vertices_transformed[1].position, P) };
-				const float triangleArea{ Calculate2DCrossProduct(vertices_transformed[0].position, vertices_transformed[1].position, vertices_transformed[2].position) };
+				float w0{ Calculate2DCrossProduct(vertices_transformed[1].position, vertices_transformed[2].position, p) };
+				float w1{ Calculate2DCrossProduct(vertices_transformed[2].position, vertices_transformed[0].position, p) };
+				float w2{ Calculate2DCrossProduct(vertices_transformed[0].position, vertices_transformed[1].position, p) };
 
-				finalColour = { vertices_transformed[0].color * (w0 / triangleArea) +
-								vertices_transformed[1].color * (w1 / triangleArea) +
-								vertices_transformed[2].color * (w2 / triangleArea) };
+				const float triangleArea{ w0 + w1 + w2 };
+
+				//normalize weights
+				w0 /= triangleArea;
+				w1 /= triangleArea;
+				w2 /= triangleArea;
+
+				finalColour = { vertices_transformed[0].color * w0 +
+								vertices_transformed[1].color * w1 +
+								vertices_transformed[2].color * w2 };
 			}
 
 			finalColour.MaxToOne();
@@ -277,12 +284,12 @@ void Renderer::Render_W1_Part4()
 			for (int py{}; py < m_Height; ++py)
 			{
 				//define current pixel in screen space
-				const Vector3 P{ px + 0.5f, py + 0.5f, 0.f };
+				const Vector2 p{ px + 0.5f, py + 0.5f};
 				ColorRGB finalColour{ 0.f, 0.f, 0.f };
 
-				if (Calculate2DCrossProduct(vertices_transformed[triangleIdx + 2].position, vertices_transformed[triangleIdx + 1].position, P) < 0.f ||
-					Calculate2DCrossProduct(vertices_transformed[triangleIdx + 1].position, vertices_transformed[triangleIdx + 0].position, P) < 0.f ||
-					Calculate2DCrossProduct(vertices_transformed[triangleIdx + 0].position, vertices_transformed[triangleIdx + 2].position, P) < 0.f)
+				if (Calculate2DCrossProduct(vertices_transformed[triangleIdx + 2].position, vertices_transformed[triangleIdx + 1].position, p) < 0.f ||
+					Calculate2DCrossProduct(vertices_transformed[triangleIdx + 1].position, vertices_transformed[triangleIdx + 0].position, p) < 0.f ||
+					Calculate2DCrossProduct(vertices_transformed[triangleIdx + 0].position, vertices_transformed[triangleIdx + 2].position, p) < 0.f)
 				{
 					isIntriangle = false;
 				}
@@ -293,16 +300,19 @@ void Renderer::Render_W1_Part4()
 
 				if (isIntriangle)
 				{
-					const float w0{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 1].position, vertices_transformed[triangleIdx + 2].position, P) };
-					const float w1{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 2].position, vertices_transformed[triangleIdx + 0].position, P) };
-					const float w2{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 0].position, vertices_transformed[triangleIdx + 1].position, P) };
-					const float triangleArea{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 0].position, 
-																   vertices_transformed[triangleIdx + 1].position, 
-																      vertices_transformed[triangleIdx + 2].position) };
+					float w0{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 1].position, vertices_transformed[triangleIdx + 2].position, p) };
+					float w1{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 2].position, vertices_transformed[triangleIdx + 0].position, p) };
+					float w2{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 0].position, vertices_transformed[triangleIdx + 1].position, p) };
+					const float triangleArea{ w0 + w1 + w2 };
+
+					//normalize weights
+					w0 /= triangleArea;
+					w1 /= triangleArea;
+					w2 /= triangleArea;
 					
 					//interpolate depth value
 					const int bufferIdx{ px + (py * m_Width) };
-					const float interpolateDepth{ 1.f / (w0 * vertices_transformed[triangleIdx + 0].position.z + 
+					const float interpolateDepth{ (w0 * vertices_transformed[triangleIdx + 0].position.z + 
 												  w1 * vertices_transformed[triangleIdx + 1].position.z +
 												  w2 * vertices_transformed[triangleIdx + 2].position.z) };
 					
@@ -310,9 +320,9 @@ void Renderer::Render_W1_Part4()
 					{
 						m_pDepthBufferPixels[bufferIdx] = interpolateDepth;
 
-						finalColour = { vertices_transformed[triangleIdx + 0].color * (w0 / triangleArea) +
-									    vertices_transformed[triangleIdx + 1].color * (w1 / triangleArea) +
-									    vertices_transformed[triangleIdx + 2].color * (w2 / triangleArea) };
+						finalColour = { vertices_transformed[triangleIdx + 0].color * w0 +
+									    vertices_transformed[triangleIdx + 1].color * w1 +
+									    vertices_transformed[triangleIdx + 2].color * w2 };
 
 						finalColour.MaxToOne();
 
@@ -345,8 +355,6 @@ void Renderer::Render_W1_Part5()
 	};
 
 	std::vector<Vertex> vertices_transformed{};
-	vertices_transformed.reserve(vertices_world.size());
-
 	VertexTransformationFunction(vertices_world, vertices_transformed);
 
 	//clear back buffer
@@ -374,23 +382,27 @@ void Renderer::Render_W1_Part5()
 			for (int py{minY}; py < maxY; ++py)
 			{
 				//define current pixel in screen space
-				const Vector3 P{ px + 0.5f, py + 0.5f, 0.f };
+				const Vector2 p{ px + 0.5f, py + 0.5f };
 				ColorRGB finalColour{ 0.f, 0.f, 0.f };
 
-				if (IsPixelInTriangle(P,vertices_transformed, triangleIdx))
+				if (IsPixelInTriangle(p,vertices_transformed, triangleIdx))
 				{
-					const float w0{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 1].position, vertices_transformed[triangleIdx + 2].position, P) };
-					const float w1{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 2].position, vertices_transformed[triangleIdx + 0].position, P) };
-					const float w2{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 0].position, vertices_transformed[triangleIdx + 1].position, P) };
-					const float triangleArea{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 0].position,
-																      vertices_transformed[triangleIdx + 1].position,
-																	  vertices_transformed[triangleIdx + 2].position) };
+					float w0{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 1].position, vertices_transformed[triangleIdx + 2].position, p) };
+					float w1{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 2].position, vertices_transformed[triangleIdx + 0].position, p) };
+					float w2{ Calculate2DCrossProduct(vertices_transformed[triangleIdx + 0].position, vertices_transformed[triangleIdx + 1].position, p) };
+					//using right formula, see slides, has performance gain too
+					const float triangleArea{ w0 + w1 + w2 };
+
+					//normalize weights
+					w0 /= triangleArea;
+					w1 /= triangleArea;
+					w2 /= triangleArea;
 
 					//interpolate depth value
 					const int bufferIdx{ px + (py * m_Width) };
-					const float interpolateDepth{ 1.f / (w0 * vertices_transformed[triangleIdx + 0].position.z +
+					const float interpolateDepth{ w0 * vertices_transformed[triangleIdx + 0].position.z +
 												  w1 * vertices_transformed[triangleIdx + 1].position.z +
-												  w2 * vertices_transformed[triangleIdx + 2].position.z) };
+												  w2 * vertices_transformed[triangleIdx + 2].position.z };
 
 
 					if (interpolateDepth < m_pDepthBufferPixels[bufferIdx])
@@ -414,7 +426,106 @@ void Renderer::Render_W1_Part5()
 	}
 }
 
-bool Renderer::IsPixelInTriangle(const Vector3& p, const std::vector<Vertex>& vertex, const int index)
+void Renderer::Render_W2()
+{
+	//define triangle - vertices in WORLD space
+	std::vector<Mesh> meshes_world
+	{
+		Mesh
+		{
+			{
+				Vertex{{-3, 3, -2}},
+				Vertex{{0, 3, -2}},
+				Vertex{{3, 3, -2}},
+				Vertex{{-3, 0, -2}},
+				Vertex{{0, 0, -2}},
+				Vertex{{3, 0, -2}},
+				Vertex{{-3, -3, -2}},
+				Vertex{{0, -3, -2}},
+				Vertex{{3, -3, -2}},
+			},
+			{
+				3, 0, 4, 1, 5, 2,
+				2, 6,
+				6, 3, 7, 4, 8, 5
+			},
+			PrimitiveTopology::TriangleStrip
+		}
+	};
+
+	/*std::vector<Mesh> meshes_world
+	{
+		Mesh
+		{
+			{
+				Vertex{ {-3, 3, -2} },
+				Vertex{ {0, 3, -2} },
+				Vertex{ {3, 3, -2} },
+				Vertex{ {-3, 0, -2} },
+				Vertex{ {0, 0, -2} },
+				Vertex{ {3, 0, -2} },
+				Vertex{ {-3, -3, -2} },
+				Vertex{ {0, -3, -2} },
+				Vertex{ {3, -3, -2} }
+			},
+			{
+				3,0,1,    1,4,3,    4,1,2,
+				2,5,4,    6,3,4,    4,7,6,
+				7,4,5,    5,8,7
+			},
+			PrimitiveTopology::TriangleList
+		}
+	};*/
+
+	std::vector<Mesh> mesh_transformed{};
+	mesh_transformed.reserve(meshes_world.size());
+
+	VertexTransformationFunction(meshes_world, mesh_transformed);
+
+	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
+
+	//clear back buffer
+	SDL_FillRect(m_pBackBuffer, &m_pBackBuffer->clip_rect, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
+
+	//extra variable; amount of sides : 0, 1, 2
+	const int amountOfSides{ 2 };
+
+	for (Mesh mesh : mesh_transformed)
+	{
+		if (mesh.primitiveTopology == PrimitiveTopology::TriangleStrip)
+		{
+			//go over triangle, per 3 vertices
+			for (int triangleIdx{}; triangleIdx < mesh.indices.size() - amountOfSides; ++triangleIdx)
+			{
+				//if it's odd (oneven)
+				if (triangleIdx & 1)
+				{
+					//make triangle clockwise again
+					std::swap(mesh.indices[triangleIdx + 1], mesh.indices[triangleIdx + 2]);
+					TriangleHandeling(triangleIdx, mesh);
+					std::swap(mesh.indices[triangleIdx + 2], mesh.indices[triangleIdx + 1]);
+				}
+				else
+				{
+					TriangleHandeling(triangleIdx, mesh);
+				}
+			}
+		}
+		else if (mesh.primitiveTopology == PrimitiveTopology::TriangleList)
+		{
+			//go over triangle, per 3 vertices
+			for (int triangleIdx{}; triangleIdx < mesh.indices.size(); triangleIdx += 3)
+			{
+				TriangleHandeling(triangleIdx, mesh);
+			}
+		}
+
+		//clear vertices
+		mesh_transformed.clear();
+	}
+}
+
+bool Renderer::IsPixelInTriangle(const Vector2& p, const std::vector<Vertex>& vertex, const int index)
 {
 	if (Calculate2DCrossProduct(vertex[index + 2].position, vertex[index + 1].position, p) < 0.f)
 	{
@@ -432,12 +543,121 @@ bool Renderer::IsPixelInTriangle(const Vector3& p, const std::vector<Vertex>& ve
 	return true;
 }
 
-float Renderer::Calculate2DCrossProduct(const Vector3& a, const Vector3& b, const Vector3& c)
+void Renderer::PixelHandeling(int px, int py, int triangleIdx, const std::vector<Vertex>& vertex_transformed)
 {
-	return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
+	//define current pixel in screen space
+	const Vector2 p{ px + 0.5f, py + 0.5f };
+	ColorRGB finalColour{ 0.f, 0.f, 0.f };
+
+	if (IsPixelInTriangle(p, vertex_transformed, triangleIdx))
+	{
+		float w0{ Calculate2DCrossProduct(vertex_transformed[triangleIdx + 1].position, vertex_transformed[triangleIdx + 2].position, p) };
+		float w1{ Calculate2DCrossProduct(vertex_transformed[triangleIdx + 2].position, vertex_transformed[triangleIdx + 0].position, p) };
+		float w2{ Calculate2DCrossProduct(vertex_transformed[triangleIdx + 0].position, vertex_transformed[triangleIdx + 1].position, p) };
+		//using right formula, see slides, has performance gain too
+		const float triangleArea{ w0 + w1 + w2 };
+
+		//normalize weights
+		w0 /= triangleArea;
+		w1 /= triangleArea;
+		w2 /= triangleArea;
+
+		//interpolate depth value
+		const int bufferIdx{ px + (py * m_Width) };
+		const float interpolateDepth{ (w0 * vertex_transformed[triangleIdx + 0].position.z +
+									   w1 * vertex_transformed[triangleIdx + 1].position.z +
+									   w2 * vertex_transformed[triangleIdx + 2].position.z) };
+
+
+		if (interpolateDepth < m_pDepthBufferPixels[bufferIdx])
+		{
+			m_pDepthBufferPixels[bufferIdx] = interpolateDepth;
+
+			finalColour = { vertex_transformed[triangleIdx + 0].color * w0 +
+							vertex_transformed[triangleIdx + 1].color * w1 +
+							vertex_transformed[triangleIdx + 2].color * w2 };
+
+			finalColour.MaxToOne();
+
+			m_pBackBufferPixels[px + (py * m_Width)] = SDL_MapRGB(m_pBackBuffer->format,
+				static_cast<uint8_t>(finalColour.r * 255),
+				static_cast<uint8_t>(finalColour.g * 255),
+				static_cast<uint8_t>(finalColour.b * 255));
+		}
+	}
 }
 
-float Renderer::Calculate2DCrossProduct(const Vector2& a, const Vector2& b, const Vector2& c)
+void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
+{
+	//calculate bounding box for the current triangle in screen space
+	const Vertex v0{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx]] };
+	const Vertex v1{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 1]] };
+	const Vertex v2{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 2]] };
+
+	//calculate min & max x of bounding box, clamped to screen
+	const int minX{ static_cast<int>(std::max(0.0f, std::min({ v0.position.x, v1.position.x, v2.position.x }))) };
+	const int maxX{ static_cast<int>(std::min(static_cast<float>(m_Width - 1), std::max({ v0.position.x, v1.position.x, v2.position.x }))) };
+	//calculate min & max y of bounding box, clamped to screen
+	const int minY{ static_cast<int>(std::max(0.0f, std::min({ v0.position.y, v1.position.y, v2.position.y }))) };
+	const int maxY{ static_cast<int>(std::min(static_cast<float>(m_Height - 1), std::max({ v0.position.y, v1.position.y, v2.position.y }))) };
+	
+	//go over each pixel is in screen space
+	for (int px{ minX }; px < maxX; ++px)
+	{
+		for (int py{ minY }; py < maxY; ++py)
+		{
+			//define current pixel in screen space
+			const Vector2 p{ px + 0.5f, py + 0.5f };
+			ColorRGB finalColour{ 0.f, 0.f, 0.f };
+
+			float w0{ Vector2::Cross(v2.position.GetXY() - v1.position.GetXY(), p - v1.position.GetXY()) };
+			float w1{ Vector2::Cross(v0.position.GetXY() - v2.position.GetXY(), p - v2.position.GetXY()) };
+			float w2{ Vector2::Cross(v1.position.GetXY() - v0.position.GetXY(), p - v0.position.GetXY()) };
+
+			// Something like this is needed
+			if (w0 >= 0.f && w1 >= 0.f && w2 >= 0.f)
+			{
+				//using right formula, see slides, has performance gain too
+				const float triangleArea{ w0 + w1 + w2 };
+				const float invTriangleArea{ 1.f / triangleArea };
+
+				//normalize weights
+				w0 *= invTriangleArea;
+				w1 *= invTriangleArea;
+				w2 *= invTriangleArea;
+
+				//interpolate depth value
+				const int bufferIdx{ px + (py * m_Width) };
+				/*const float interpolateDepth{w0 * mesh_transformed.vertices[triangleIdx + 0].position.z +
+												w1 * mesh_transformed.vertices[triangleIdx + 1].position.z +
+												w2 * mesh_transformed.vertices[triangleIdx + 2].position.z };*/
+				const float interpolateDepth{ v0.position.z * w0 + 
+											  v1.position.z * w1 + 
+											  v2.position.z * w2 };
+
+
+				if (interpolateDepth <= m_pDepthBufferPixels[bufferIdx])
+				{
+					m_pDepthBufferPixels[bufferIdx] = interpolateDepth;
+
+					/*finalColour = { mesh_transformed.vertices[triangleIdx + 0].color * w0 +
+									mesh_transformed.vertices[triangleIdx + 1].color * w1 +
+									mesh_transformed.vertices[triangleIdx + 2].color * w2 };*/
+					finalColour = { v0.color * w0 + v1.color * w1 + v2.color * w2 };
+
+					finalColour.MaxToOne();
+
+					m_pBackBufferPixels[bufferIdx] = SDL_MapRGB(m_pBackBuffer->format,
+						static_cast<uint8_t>(finalColour.r * 255),
+						static_cast<uint8_t>(finalColour.g * 255),
+						static_cast<uint8_t>(finalColour.b * 255));
+				}
+			}
+		}
+	}
+}
+
+float Renderer::Calculate2DCrossProduct(const Vector3& a, const Vector3& b, const Vector2& c)
 {
 	return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
 }
@@ -457,6 +677,26 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 		projectedVertex.y = ((1 - projectedVertex.y) / 2) * m_Height;
 
 		vertices_out.emplace_back(Vertex{ projectedVertex, vertices_in[idx].color });
+	}
+}
+
+void Renderer::VertexTransformationFunction(const std::vector<Mesh>& meshes_in, std::vector<Mesh>& meshes_out) const
+{
+	meshes_out = meshes_in;
+	
+	for (Mesh& mesh : meshes_out)
+	{
+		for (Vertex& vertice : mesh.vertices)
+		{
+			vertice.position = m_Camera.viewMatrix.TransformPoint(vertice.position);
+
+			vertice.position.x = (vertice.position.x / vertice.position.z) / (float(m_Width) / float(m_Height) * m_Camera.fov);
+			vertice.position.y = (vertice.position.y / vertice.position.z) / m_Camera.fov;
+			vertice.position.z = vertice.position.z;
+
+			vertice.position.x = ((vertice.position.x + 1.f) / 2.f) * m_Width;
+			vertice.position.y = ((1.f - vertice.position.y) / 2.f) * m_Height;
+		}
 	}
 }
 

@@ -145,15 +145,15 @@ namespace dae {
 	Matrix Matrix::CreateLookAtLH(const Vector3& origin, const Vector3& forward, const Vector3& up)
 	{
 		// Calculate the forward, right, and up vectors
-		Vector3 zAxis{ (forward - origin).Normalized() };
-		Vector3 xAxis{ Vector3::Cross(up, zAxis).Normalized()} ;
+		Vector3 zAxis{ forward.Normalized() };
+		Vector3 xAxis{ Vector3::Cross(up, zAxis).Normalized() };
 		Vector3 yAxis{ Vector3::Cross(zAxis,xAxis) };
 
 		//update matrix data
 		Matrix viewMatrix{
-			{ xAxis.x, yAxis.x, -forward.x, 0.0f },
-			{ xAxis.y, yAxis.y, -forward.y, 0.0f },
-			{ xAxis.z, yAxis.z, -forward.z, 0.0f },
+			{ xAxis.x, yAxis.x, zAxis.x, 0.0f },
+			{ xAxis.y, yAxis.y, zAxis.y, 0.0f },
+			{ xAxis.z, yAxis.z, zAxis.z, 0.0f },
 			{ Vector3::Dot(-xAxis, origin), Vector3::Dot(-yAxis,origin), Vector3::Dot(zAxis,origin), 1.0f},
 		};
 

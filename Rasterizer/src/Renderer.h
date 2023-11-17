@@ -39,11 +39,18 @@ namespace dae
 		void Render_W1_Part4();
 		void Render_W1_Part5();
 
+		void Render_W2();
+
 		//------ Own Functions ------
-		float Calculate2DCrossProduct(const Vector3& a, const Vector3& b, const Vector3& c);
-		float Calculate2DCrossProduct(const Vector2& a, const Vector2& b, const Vector2& c);
-		bool IsPixelInTriangle(const Vector3& p, const std::vector<Vertex>& vertex, const int index);
+		float Calculate2DCrossProduct(const Vector3& a, const Vector3& b, const Vector2& c);
+
+		bool IsPixelInTriangle(const Vector2& p, const std::vector<Vertex>& vertex, const int index);
+
+		void PixelHandeling(int px, int py, int triangleIdx, const std::vector<Vertex>& vertex_transformed);
+		void TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed);
+
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
+		void VertexTransformationFunction(const std::vector<Mesh>& meshes_in, std::vector<Mesh>& meshes_out) const;
 
 	private:
 		SDL_Window* m_pWindow{};
