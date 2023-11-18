@@ -25,10 +25,13 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pBackBufferPixels = (uint32_t*)m_pBackBuffer->pixels;
 
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
+
+	m_TexturePtr = Texture::LoadFromFile({ "Resources/uv_grid_2.png" } );
 }
 
 Renderer::~Renderer()
 {
+	delete m_TexturePtr;
 	delete[] m_pDepthBufferPixels;
 }
 
@@ -429,30 +432,6 @@ void Renderer::Render_W1_Part5()
 void Renderer::Render_W2()
 {
 	//define triangle - vertices in WORLD space
-	std::vector<Mesh> meshes_world
-	{
-		Mesh
-		{
-			{
-				Vertex{{-3, 3, -2}},
-				Vertex{{0, 3, -2}},
-				Vertex{{3, 3, -2}},
-				Vertex{{-3, 0, -2}},
-				Vertex{{0, 0, -2}},
-				Vertex{{3, 0, -2}},
-				Vertex{{-3, -3, -2}},
-				Vertex{{0, -3, -2}},
-				Vertex{{3, -3, -2}},
-			},
-			{
-				3, 0, 4, 1, 5, 2,
-				2, 6,
-				6, 3, 7, 4, 8, 5
-			},
-			PrimitiveTopology::TriangleStrip
-		}
-	};
-
 	/*std::vector<Mesh> meshes_world
 	{
 		Mesh
@@ -466,16 +445,40 @@ void Renderer::Render_W2()
 				Vertex{ {3, 0, -2} },
 				Vertex{ {-3, -3, -2} },
 				Vertex{ {0, -3, -2} },
-				Vertex{ {3, -3, -2} }
+				Vertex{ {3, -3, -2} },
 			},
 			{
-				3,0,1,    1,4,3,    4,1,2,
-				2,5,4,    6,3,4,    4,7,6,
-				7,4,5,    5,8,7
+				3, 0, 4, 1, 5, 2,
+				2, 6,
+				6, 3, 7, 4, 8, 5
+			},
+			PrimitiveTopology::TriangleStrip
+		}
+	};*/
+
+	std::vector<Mesh> meshes_world
+	{
+		Mesh
+		{
+			{
+				Vertex{ {-3, 3, -2}, {}, {0.f, 0.f} },
+				Vertex{ {0, 3, -2}, {}, {0.5f, 0.f} },
+				Vertex{ {3, 3, -2}, {}, {1.f, 0.f} },
+				Vertex{ {-3, 0, -2}, {}, {0.f, 0.5f} },
+				Vertex{ {0, 0, -2}, {}, {0.5f, 0.5f} },
+				Vertex{ {3, 0, -2}, {}, {1.f, 0.5f} },
+				Vertex{ {-3, -3, -2}, {}, {0.f, 1.f} },
+				Vertex{ {0, -3, -2}, {}, {0.5f, 1.f} },
+				Vertex{ {3, -3, -2}, {}, {1.f, 1.f} }
+			},
+			{
+				3, 0, 1,    1, 4, 3,    4, 1, 2,
+				2, 5, 4,    6, 3, 4,    4, 7, 6,
+				7, 4, 5,    5, 8, 7
 			},
 			PrimitiveTopology::TriangleList
 		}
-	};*/
+	};
 
 	std::vector<Mesh> mesh_transformed{};
 	mesh_transformed.reserve(meshes_world.size());
@@ -628,22 +631,21 @@ void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 
 				//interpolate depth value
 				const int bufferIdx{ px + (py * m_Width) };
-				/*const float interpolateDepth{w0 * mesh_transformed.vertices[triangleIdx + 0].position.z +
-												w1 * mesh_transformed.vertices[triangleIdx + 1].position.z +
-												w2 * mesh_transformed.vertices[triangleIdx + 2].position.z };*/
 				const float interpolateDepth{ v0.position.z * w0 + 
 											  v1.position.z * w1 + 
 											  v2.position.z * w2 };
-
-
+				
 				if (interpolateDepth <= m_pDepthBufferPixels[bufferIdx])
 				{
 					m_pDepthBufferPixels[bufferIdx] = interpolateDepth;
+					//finalColour = { v0.color * w0 + v1.color * w1 + v2.color * w2 };
 
-					/*finalColour = { mesh_transformed.vertices[triangleIdx + 0].color * w0 +
-									mesh_transformed.vertices[triangleIdx + 1].color * w1 +
-									mesh_transformed.vertices[triangleIdx + 2].color * w2 };*/
-					finalColour = { v0.color * w0 + v1.color * w1 + v2.color * w2 };
+					Vector2 interpolatedUVDepth{ v0.uv * w0 + v1.uv * w1 + v2.uv * w2 };
+					//interpolatedUVDepth.x = Clamp(interpolatedUVDepth.x , 0.f, 1.f);
+					//interpolatedUVDepth.y = Clamp(interpolatedUVDepth.y , 0.f, 1.f);
+
+
+					finalColour = m_TexturePtr->Sample(interpolatedUVDepth);
 
 					finalColour.MaxToOne();
 
