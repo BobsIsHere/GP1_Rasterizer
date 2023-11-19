@@ -456,7 +456,7 @@ void Renderer::Render_W2()
 		}
 	};*/
 
-	std::vector<Mesh> meshes_world
+	std::vector<Mesh> meshes_world 
 	{
 		Mesh
 		{
@@ -490,28 +490,17 @@ void Renderer::Render_W2()
 	//clear back buffer
 	SDL_FillRect(m_pBackBuffer, &m_pBackBuffer->clip_rect, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
 
-	//extra variable; amount of sides : 0, 1, 2
-	const int amountOfSides{ 2 };
-
 	for (Mesh mesh : mesh_transformed)
 	{
 		if (mesh.primitiveTopology == PrimitiveTopology::TriangleStrip)
 		{
+			//extra variable; amount of sides : 0, 1, 2
+			const auto& maxIdx{ mesh.indices.size() - 2 };
+
 			//go over triangle, per 3 vertices
-			for (int triangleIdx{}; triangleIdx < mesh.indices.size() - amountOfSides; ++triangleIdx)
+			for (int triangleIdx{}; triangleIdx < maxIdx; ++triangleIdx)
 			{
-				//if it's odd (oneven)
-				if (triangleIdx & 1)
-				{
-					//make triangle clockwise again
-					std::swap(mesh.indices[triangleIdx + 1], mesh.indices[triangleIdx + 2]);
-					TriangleHandeling(triangleIdx, mesh);
-					std::swap(mesh.indices[triangleIdx + 2], mesh.indices[triangleIdx + 1]);
-				}
-				else
-				{
-					TriangleHandeling(triangleIdx, mesh);
-				}
+				TriangleHandeling(triangleIdx, mesh);
 			}
 		}
 		else if (mesh.primitiveTopology == PrimitiveTopology::TriangleList)
@@ -521,11 +510,11 @@ void Renderer::Render_W2()
 			{
 				TriangleHandeling(triangleIdx, mesh);
 			}
-		}
-
-		//clear vertices
-		mesh_transformed.clear();
+		}		
 	}
+
+	//clear vertices
+	mesh_transformed.clear();
 }
 
 bool Renderer::IsPixelInTriangle(const Vector2& p, const std::vector<Vertex>& vertex, const int index)
@@ -594,14 +583,22 @@ void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 {
 	//calculate bounding box for the current triangle in screen space
 	const Vertex v0{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx]] };
-	const Vertex v1{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 1]] };
-	const Vertex v2{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 2]] };
+	Vertex v1{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 1]] };
+	Vertex v2{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 2]] };
+
+	//if it's odd (oneven)
+	if (triangleIdx & 1 and mesh_transformed.primitiveTopology == PrimitiveTopology::TriangleStrip)
+	{
+		//swap variables, make triangle counter-clockwise
+		v1 = { mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 2]] };
+		v2 = { mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 1]] };
+	}
 
 	//calculate min & max x of bounding box, clamped to screen
-	const int minX{ static_cast<int>(std::max(0.0f, std::min({ v0.position.x, v1.position.x, v2.position.x }))) };
+	const int minX{ static_cast<int>(std::max(0.f, std::min({ v0.position.x, v1.position.x, v2.position.x }))) };
 	const int maxX{ static_cast<int>(std::min(static_cast<float>(m_Width), std::max({ v0.position.x, v1.position.x, v2.position.x }))) };
 	//calculate min & max y of bounding box, clamped to screen
-	const int minY{ static_cast<int>(std::max(0.0f, std::min({ v0.position.y, v1.position.y, v2.position.y }))) };
+	const int minY{ static_cast<int>(std::max(0.f, std::min({ v0.position.y, v1.position.y, v2.position.y }))) };
 	const int maxY{ static_cast<int>(std::min(static_cast<float>(m_Height), std::max({ v0.position.y, v1.position.y, v2.position.y }))) };
 	
 	//go over each pixel is in screen space
@@ -617,7 +614,6 @@ void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 			float w1{ Vector2::Cross(v0.position.GetXY() - v2.position.GetXY(), p - v2.position.GetXY()) };
 			float w2{ Vector2::Cross(v1.position.GetXY() - v0.position.GetXY(), p - v0.position.GetXY()) };
 
-			// Something like this is needed
 			if (w0 >= 0.f && w1 >= 0.f && w2 >= 0.f)
 			{
 				//using right formula, see slides, has performance gain too
@@ -631,9 +627,7 @@ void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 
 				//interpolate depth value
 				const int bufferIdx{ px + (py * m_Width) };
-				/*const float zInterpolated{ v0.position.z * w0 + 
-											  v1.position.z * w1 + 
-											  v2.position.z * w2 };*/
+
 				const float invVerticeZ0{ (1.f / v0.position.z) * w0 };
 				const float invVerticeZ1{ (1.f / v1.position.z) * w1 };
 				const float invVerticeZ2{ (1.f / v2.position.z) * w2 };
@@ -643,8 +637,7 @@ void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 				if (zInterpolated <= m_pDepthBufferPixels[bufferIdx])
 				{
 					m_pDepthBufferPixels[bufferIdx] = zInterpolated;
-					//finalColour = { v0.color * w0 + v1.color * w1 + v2.color * w2 };
-					//Vector2 interpolatedUVDepth{ v0.uv * w0 + v1.uv * w1 + v2.uv * w2 };
+
 					Vector2 invUV0{ (v0.uv / v0.position.z) * w0 };
 					Vector2 invUV1{ (v1.uv / v1.position.z) * w1 };
 					Vector2 invUV2{ (v2.uv / v2.position.z) * w2 };
