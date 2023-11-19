@@ -25,7 +25,7 @@ namespace dae
 		//Load SDL_Surface using IMG_LOAD
 		//Create & Return a new Texture Object (using SDL_Surface)
 		//use c_str() to obtain const char*
-		SDL_Surface* texturePtr{ IMG_Load(path.c_str())};
+		SDL_Surface* texturePtr{ IMG_Load(path.data())};
 
 		//if IMG_Load fails -> function will return nullptr
 		if (!texturePtr)

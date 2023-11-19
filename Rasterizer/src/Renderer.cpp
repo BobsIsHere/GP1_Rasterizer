@@ -26,12 +26,12 @@ Renderer::Renderer(SDL_Window* pWindow) :
 
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
-	m_TexturePtr = Texture::LoadFromFile({ "Resources/uv_grid_2.png" } );
+	m_pTexture = Texture::LoadFromFile({ "Resources/uv_grid_2.png" } );
 }
 
 Renderer::~Renderer()
 {
-	delete m_TexturePtr;
+	delete m_pTexture;
 	delete[] m_pDepthBufferPixels;
 }
 
@@ -437,15 +437,15 @@ void Renderer::Render_W2()
 		Mesh
 		{
 			{
-				Vertex{ {-3, 3, -2} },
-				Vertex{ {0, 3, -2} },
-				Vertex{ {3, 3, -2} },
-				Vertex{ {-3, 0, -2} },
-				Vertex{ {0, 0, -2} },
-				Vertex{ {3, 0, -2} },
-				Vertex{ {-3, -3, -2} },
-				Vertex{ {0, -3, -2} },
-				Vertex{ {3, -3, -2} },
+				Vertex{ {-3, 3, -2}, {}, {0.f, 0.f} },
+				Vertex{ {0, 3, -2}, {}, {0.5f, 0.f} },
+				Vertex{ {3, 3, -2}, {}, {1.f, 0.f} },
+				Vertex{ {-3, 0, -2}, {}, {0.f, 0.5f} },
+				Vertex{ {0, 0, -2}, {}, {0.5f, 0.5f} },
+				Vertex{ {3, 0, -2}, {}, {1.f, 0.5f} },
+				Vertex{ {-3, -3, -2}, {}, {0.f, 1.f} },
+				Vertex{ {0, -3, -2}, {}, {0.5f, 1.f} },
+				Vertex{ {3, -3, -2}, {}, {1.f, 1.f} }
 			},
 			{
 				3, 0, 4, 1, 5, 2,
@@ -599,10 +599,10 @@ void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 
 	//calculate min & max x of bounding box, clamped to screen
 	const int minX{ static_cast<int>(std::max(0.0f, std::min({ v0.position.x, v1.position.x, v2.position.x }))) };
-	const int maxX{ static_cast<int>(std::min(static_cast<float>(m_Width - 1), std::max({ v0.position.x, v1.position.x, v2.position.x }))) };
+	const int maxX{ static_cast<int>(std::min(static_cast<float>(m_Width), std::max({ v0.position.x, v1.position.x, v2.position.x }))) };
 	//calculate min & max y of bounding box, clamped to screen
 	const int minY{ static_cast<int>(std::max(0.0f, std::min({ v0.position.y, v1.position.y, v2.position.y }))) };
-	const int maxY{ static_cast<int>(std::min(static_cast<float>(m_Height - 1), std::max({ v0.position.y, v1.position.y, v2.position.y }))) };
+	const int maxY{ static_cast<int>(std::min(static_cast<float>(m_Height), std::max({ v0.position.y, v1.position.y, v2.position.y }))) };
 	
 	//go over each pixel is in screen space
 	for (int px{ minX }; px < maxX; ++px)
@@ -631,21 +631,27 @@ void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 
 				//interpolate depth value
 				const int bufferIdx{ px + (py * m_Width) };
-				const float interpolateDepth{ v0.position.z * w0 + 
+				/*const float zInterpolated{ v0.position.z * w0 + 
 											  v1.position.z * w1 + 
-											  v2.position.z * w2 };
+											  v2.position.z * w2 };*/
+				const float invVerticeZ0{ (1.f / v0.position.z) * w0 };
+				const float invVerticeZ1{ (1.f / v1.position.z) * w1 };
+				const float invVerticeZ2{ (1.f / v2.position.z) * w2 };
 				
-				if (interpolateDepth <= m_pDepthBufferPixels[bufferIdx])
+				const float zInterpolated{ 1.f / (invVerticeZ0 + invVerticeZ1 + invVerticeZ2) };
+				
+				if (zInterpolated <= m_pDepthBufferPixels[bufferIdx])
 				{
-					m_pDepthBufferPixels[bufferIdx] = interpolateDepth;
+					m_pDepthBufferPixels[bufferIdx] = zInterpolated;
 					//finalColour = { v0.color * w0 + v1.color * w1 + v2.color * w2 };
+					//Vector2 interpolatedUVDepth{ v0.uv * w0 + v1.uv * w1 + v2.uv * w2 };
+					Vector2 invUV0{ (v0.uv / v0.position.z) * w0 };
+					Vector2 invUV1{ (v1.uv / v1.position.z) * w1 };
+					Vector2 invUV2{ (v2.uv / v2.position.z) * w2 };
 
-					Vector2 interpolatedUVDepth{ v0.uv * w0 + v1.uv * w1 + v2.uv * w2 };
-					//interpolatedUVDepth.x = Clamp(interpolatedUVDepth.x , 0.f, 1.f);
-					//interpolatedUVDepth.y = Clamp(interpolatedUVDepth.y , 0.f, 1.f);
+					Vector2 interpolatedUVDepth{ (invUV0 + invUV1 + invUV2) * zInterpolated };
 
-
-					finalColour = m_TexturePtr->Sample(interpolatedUVDepth);
+					finalColour = m_pTexture->Sample(interpolatedUVDepth);
 
 					finalColour.MaxToOne();
 
