@@ -17,7 +17,8 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	//Initialize
 	SDL_GetWindowSize(pWindow, &m_Width, &m_Height);
 	//Initialize Camera
-	m_Camera.Initialize(60.f, { 0.f, 0.f, -10.f });
+	const float aspectRatio{ float(m_Width) / float(m_Height) };
+	m_Camera.Initialize(aspectRatio, 60.f, { 0.f, 0.f, -10.f });
 
 	//Create Buffers
 	m_pFrontBuffer = SDL_GetWindowSurface(pWindow);
@@ -27,6 +28,7 @@ Renderer::Renderer(SDL_Window* pWindow) :
 	m_pDepthBufferPixels = new float[m_Width * m_Height];
 
 	m_pTexture = Texture::LoadFromFile({ "Resources/uv_grid_2.png" } );
+	m_RenderMode = RenderMode::FinalColour;
 }
 
 Renderer::~Renderer()
@@ -51,7 +53,8 @@ void Renderer::Render()
 	//Render_W1_Part3();		//barycentric coordinates
 	//Render_W1_Part4();		//depth buffer
 	//Render_W1_Part5();		//boundingbox optimization
-	Render_W2();
+	//Render_W2();
+	Render_W3();
 
 	//RENDER LOGIC
 	//for (int px{}; px < m_Width; ++px)
@@ -480,17 +483,17 @@ void Renderer::Render_W2()
 		}
 	};
 
-	std::vector<Mesh> mesh_transformed{};
-	mesh_transformed.reserve(meshes_world.size());
+	//std::vector<Mesh> mesh_transformed{};
+	//mesh_transformed.reserve(meshes_world.size());
 
-	VertexTransformationFunction(meshes_world, mesh_transformed);
+	VertexTransformationFunction(meshes_world);
 
 	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
 
 	//clear back buffer
 	SDL_FillRect(m_pBackBuffer, &m_pBackBuffer->clip_rect, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
 
-	for (Mesh mesh : mesh_transformed)
+	for (Mesh mesh : meshes_world)
 	{
 		if (mesh.primitiveTopology == PrimitiveTopology::TriangleStrip)
 		{
@@ -514,7 +517,92 @@ void Renderer::Render_W2()
 	}
 
 	//clear vertices
-	mesh_transformed.clear();
+	meshes_world.clear();
+}
+
+void Renderer::Render_W3()
+{
+	//define triangle - vertices in WORLD space
+	std::vector<Mesh> meshes_world
+	{
+		Mesh
+		{
+			{
+				Vertex{ {-3, 3, -2}, {}, {0.f, 0.f} },
+				Vertex{ {0, 3, -2}, {}, {0.5f, 0.f} },
+				Vertex{ {3, 3, -2}, {}, {1.f, 0.f} },
+				Vertex{ {-3, 0, -2}, {}, {0.f, 0.5f} },
+				Vertex{ {0, 0, -2}, {}, {0.5f, 0.5f} },
+				Vertex{ {3, 0, -2}, {}, {1.f, 0.5f} },
+				Vertex{ {-3, -3, -2}, {}, {0.f, 1.f} },
+				Vertex{ {0, -3, -2}, {}, {0.5f, 1.f} },
+				Vertex{ {3, -3, -2}, {}, {1.f, 1.f} }
+			},
+			{
+				3, 0, 4, 1, 5, 2,
+				2, 6,
+				6, 3, 7, 4, 8, 5
+			},
+			PrimitiveTopology::TriangleStrip
+		}
+	};
+
+	/*std::vector<Mesh> meshes_world
+	{
+		Mesh
+		{
+			{
+				Vertex{ {-3, 3, -2}, {}, {0.f, 0.f} },
+				Vertex{ {0, 3, -2}, {}, {0.5f, 0.f} },
+				Vertex{ {3, 3, -2}, {}, {1.f, 0.f} },
+				Vertex{ {-3, 0, -2}, {}, {0.f, 0.5f} },
+				Vertex{ {0, 0, -2}, {}, {0.5f, 0.5f} },
+				Vertex{ {3, 0, -2}, {}, {1.f, 0.5f} },
+				Vertex{ {-3, -3, -2}, {}, {0.f, 1.f} },
+				Vertex{ {0, -3, -2}, {}, {0.5f, 1.f} },
+				Vertex{ {3, -3, -2}, {}, {1.f, 1.f} }
+			},
+			{
+				3, 0, 1,    1, 4, 3,    4, 1, 2,
+				2, 5, 4,    6, 3, 4,    4, 7, 6,
+				7, 4, 5,    5, 8, 7
+			},
+			PrimitiveTopology::TriangleList
+		}
+	};*/
+
+	VertexTransformationFunction(meshes_world);
+
+	std::fill_n(m_pDepthBufferPixels, m_Width * m_Height, FLT_MAX);
+
+	//clear back buffer
+	SDL_FillRect(m_pBackBuffer, &m_pBackBuffer->clip_rect, SDL_MapRGB(m_pBackBuffer->format, 100, 100, 100));
+
+	for (Mesh mesh : meshes_world)
+	{
+		if (mesh.primitiveTopology == PrimitiveTopology::TriangleStrip)
+		{
+			//extra variable; amount of sides : 0, 1, 2
+			const auto& maxIdx{ mesh.indices.size() - 2 };
+
+			//go over triangle, per 3 vertices
+			for (int triangleIdx{}; triangleIdx < maxIdx; ++triangleIdx)
+			{
+				TriangleHandeling(triangleIdx, mesh);
+			}
+		}
+		else if (mesh.primitiveTopology == PrimitiveTopology::TriangleList)
+		{
+			//go over triangle, per 3 vertices
+			for (int triangleIdx{}; triangleIdx < mesh.indices.size(); triangleIdx += 3)
+			{
+				TriangleHandeling(triangleIdx, mesh);
+			}
+		}
+	}
+
+	//clear vertices
+	meshes_world.clear();
 }
 
 bool Renderer::IsPixelInTriangle(const Vector2& p, const std::vector<Vertex>& vertex, const int index)
@@ -582,16 +670,29 @@ void Renderer::PixelHandeling(int px, int py, int triangleIdx, const std::vector
 void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 {
 	//calculate bounding box for the current triangle in screen space
-	const Vertex v0{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx]] };
-	Vertex v1{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 1]] };
-	Vertex v2{ mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 2]] };
+	const Vertex_Out v0{ mesh_transformed.vertices_out[mesh_transformed.indices[triangleIdx]] };
+	Vertex_Out v1{ mesh_transformed.vertices_out[mesh_transformed.indices[triangleIdx + 1]] };
+	Vertex_Out v2{ mesh_transformed.vertices_out[mesh_transformed.indices[triangleIdx + 2]] };
 
 	//if it's odd (oneven)
 	if (triangleIdx & 1 and mesh_transformed.primitiveTopology == PrimitiveTopology::TriangleStrip)
 	{
 		//swap variables, make triangle counter-clockwise
-		v1 = { mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 2]] };
-		v2 = { mesh_transformed.vertices[mesh_transformed.indices[triangleIdx + 1]] };
+		v1 = { mesh_transformed.vertices_out[mesh_transformed.indices[triangleIdx + 2]] };
+		v2 = { mesh_transformed.vertices_out[mesh_transformed.indices[triangleIdx + 1]] };
+	}
+
+	if (v0.position.x < 0 || v0.position.x > m_Width || v0.position.y < 0 || v0.position.y > m_Height)
+	{
+		return;
+	}
+	if (v1.position.x < 0 || v1.position.x > m_Width || v1.position.y < 0 || v1.position.y > m_Height)
+	{
+		return;
+	}
+	if (v2.position.x < 0 || v2.position.x > m_Width || v2.position.y < 0 || v2.position.y > m_Height)
+	{
+		return;
 	}
 
 	//calculate min & max x of bounding box, clamped to screen
@@ -616,6 +717,8 @@ void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 
 			if (w0 >= 0.f && w1 >= 0.f && w2 >= 0.f)
 			{
+				//ClippingTriangle(v0, v1, v2);
+				
 				//using right formula, see slides, has performance gain too
 				const float triangleArea{ w0 + w1 + w2 };
 				const float invTriangleArea{ 1.f / triangleArea };
@@ -628,23 +731,41 @@ void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 				//interpolate depth value
 				const int bufferIdx{ px + (py * m_Width) };
 
+				//depth buffer -> only for comparing depth values; are not linear
 				const float invVerticeZ0{ (1.f / v0.position.z) * w0 };
 				const float invVerticeZ1{ (1.f / v1.position.z) * w1 };
 				const float invVerticeZ2{ (1.f / v2.position.z) * w2 };
+				//used for comparison in depth test and value we store in depth buffer
+				float zBufferValue{ 1.f / (invVerticeZ0 + invVerticeZ1 + invVerticeZ2) };
 				
-				const float zInterpolated{ 1.f / (invVerticeZ0 + invVerticeZ1 + invVerticeZ2) };
-				
-				if (zInterpolated <= m_pDepthBufferPixels[bufferIdx])
+				if (zBufferValue <= m_pDepthBufferPixels[bufferIdx])
 				{
-					m_pDepthBufferPixels[bufferIdx] = zInterpolated;
+					m_pDepthBufferPixels[bufferIdx] = zBufferValue;
 
-					Vector2 invUV0{ (v0.uv / v0.position.z) * w0 };
-					Vector2 invUV1{ (v1.uv / v1.position.z) * w1 };
-					Vector2 invUV2{ (v2.uv / v2.position.z) * w2 };
+					//intepolate vertex attributes with correct depth
+					const float invVerticeW0{ (1.f / v0.position.w) * w0 };
+					const float invVerticeW1{ (1.f / v1.position.w) * w1 };
+					const float invVerticeW2{ (1.f / v2.position.w) * w2 };
 
-					Vector2 interpolatedUVDepth{ (invUV0 + invUV1 + invUV2) * zInterpolated };
+					float wInterpolated{ 1.f / (invVerticeW0 + invVerticeW1 + invVerticeW2) };
 
-					finalColour = m_pTexture->Sample(interpolatedUVDepth);
+					Vector2 invUV0{ (v0.uv / v0.position.w) * w0 };
+					Vector2 invUV1{ (v1.uv / v1.position.w) * w1 };
+					Vector2 invUV2{ (v2.uv / v2.position.w) * w2 };
+
+					Vector2 interpolatedUVDepth{ (invUV0 + invUV1 + invUV2) * wInterpolated };
+
+					switch (m_RenderMode)
+					{
+					case Renderer::FinalColour:
+						wInterpolated = Remap(wInterpolated, 0.985f, 1.f, 0.f, 1.f);
+						finalColour = m_pTexture->Sample(interpolatedUVDepth);
+						break;
+					case Renderer::DepthBuffer:
+						zBufferValue = Remap(zBufferValue, 0.985f, 1.f, 0.f, 1.f);
+						finalColour = ColorRGB{ zBufferValue, zBufferValue, zBufferValue };
+						break;
+					}
 
 					finalColour.MaxToOne();
 
@@ -661,6 +782,18 @@ void Renderer::TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed)
 float Renderer::Calculate2DCrossProduct(const Vector3& a, const Vector3& b, const Vector2& c)
 {
 	return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
+}
+
+float Renderer::Remap(float value, float inputMin, float inputMax, float outputMin, float outputMax)
+{
+	// Ensure the input value is within the specified range
+	value = std::max(inputMin, std::min(value, inputMax));
+
+	// Perform the remapping calculation
+	double inputRange{ inputMax - inputMin };
+	double outputRange{ outputMax - outputMin };
+
+	return outputMin + (value - inputMin) * (outputRange / inputRange);
 }
 
 void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const
@@ -681,24 +814,77 @@ void Renderer::VertexTransformationFunction(const std::vector<Vertex>& vertices_
 	}
 }
 
-void Renderer::VertexTransformationFunction(const std::vector<Mesh>& meshes_in, std::vector<Mesh>& meshes_out) const
+void Renderer::VertexTransformationFunction(std::vector<Mesh>& meshes_in) const
 {
-	meshes_out = meshes_in;
-	
-	for (Mesh& mesh : meshes_out)
+	for (auto& mesh : meshes_in)
 	{
+		const Matrix worldViewProjectionMatrix{ mesh.worldMatrix * m_Camera.viewMatrix * m_Camera.projectionMatrix };
+		mesh.vertices_out.clear();
+		
 		for (Vertex& vertice : mesh.vertices)
 		{
-			vertice.position = m_Camera.viewMatrix.TransformPoint(vertice.position);
+			auto vertexPosition{ Vector4{vertice.position, 1} };
+			auto transformedPosition{ worldViewProjectionMatrix.TransformPoint(vertexPosition) };
+			
+			transformedPosition = worldViewProjectionMatrix.TransformPoint(Vector4{ vertice.position, 1.f });
 
-			vertice.position.x = (vertice.position.x / vertice.position.z) / (float(m_Width) / float(m_Height) * m_Camera.fov);
-			vertice.position.y = (vertice.position.y / vertice.position.z) / m_Camera.fov;
-			vertice.position.z = vertice.position.z;
+			transformedPosition.x /= transformedPosition.w;
+			transformedPosition.y /= transformedPosition.w;
+			transformedPosition.z /= transformedPosition.w;
+			transformedPosition.w = transformedPosition.w;
 
-			vertice.position.x = ((vertice.position.x + 1.f) / 2.f) * m_Width;
-			vertice.position.y = ((1.f - vertice.position.y) / 2.f) * m_Height;
+			transformedPosition.x = ((transformedPosition.x + 1.f) / 2.f) * m_Width;
+			transformedPosition.y = ((1.f - transformedPosition.y) / 2.f) * m_Height;
+
+			Vertex_Out vertex_out{ transformedPosition, vertice.color, vertice.uv };
+			mesh.vertices_out.push_back(vertex_out);
 		}
 	}
+}
+
+void Renderer::ClippingTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2)
+{
+	std::vector<Vertex_Out> clippedVertices{};
+
+	if (v0.position.z > -0.1f && v1.position.z > -0.1f && v2.position.z > -0.1f)
+	{
+		clippedVertices.push_back(v0);
+		clippedVertices.push_back(v1);
+		clippedVertices.push_back(v2);
+	}
+	else
+	{
+		Vertex_Out clippedV0, clippedV1;
+
+		if (v0.position.z > -0.1f && v1.position.z <= -0.1f)
+		{
+			// Perform intersection and generate new vertex clippedV0
+			const float t{ (-1.f - v1.position.z) / (v0.position.z - v1.position.z) };
+
+			clippedV0.position.x = v1.position.x + t * (v0.position.x - v1.position.x);
+			clippedV0.position.y = v1.position.y + t * (v0.position.y - v1.position.y);
+			clippedV0.position.z = -0.1f;
+
+			clippedVertices.push_back(clippedV0);
+		}
+		else if (v0.position.z <= -0.1f && v1.position.z > -0.1f)
+		{
+			// Perform intersection and generate new vertex clippedV1
+			const float t{ (-1.f - v2.position.z) / (v1.position.z - v2.position.z) };
+
+			clippedV1.position.x = v2.position.x + t * (v1.position.x - v2.position.x);
+			clippedV1.position.y = v2.position.y + t * (v1.position.y - v2.position.y);
+			clippedV1.position.z = -0.1f;
+
+			clippedVertices.push_back(clippedV1);
+		}
+	}
+}
+
+void Renderer::RenderModeCycling()
+{
+	int temp{ static_cast<int>(m_RenderMode) };
+	m_RenderMode = static_cast<RenderMode>((++temp) % 2);
 }
 
 bool Renderer::SaveBufferToImage() const

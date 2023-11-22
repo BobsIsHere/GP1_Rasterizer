@@ -160,11 +160,15 @@ namespace dae {
 		return viewMatrix;
 	}
 
-	Matrix Matrix::CreatePerspectiveFovLH(float fov, float aspect, float zn, float zf)
+	Matrix Matrix::CreatePerspectiveFovLH(float fov, float aspect, float near, float far)
 	{
-		//TODO W3
+		const float A{ far / (far - near) };
+		const float B{ -(far * near) / (far - near) };
 
-		return {};
+		return { Vector4{ 1 / (aspect * fov), 0, 0, 0 },
+			     Vector4{ 0, 1 / fov, 0, 0 },
+			     Vector4{ 0, 0, A, 1 },
+			     Vector4{ 0, 0, B, 0 } };
 	}
 
 	Vector3 Matrix::GetAxisX() const

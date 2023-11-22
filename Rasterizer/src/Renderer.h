@@ -13,6 +13,7 @@ namespace dae
 	class Texture;
 	struct Mesh;
 	struct Vertex;
+	struct Vertex_Out;
 	class Timer;
 	class Scene;
 
@@ -41,8 +42,18 @@ namespace dae
 
 		void Render_W2();
 
+		void Render_W3();
+
+		//------ Enum Class ------
+		enum RenderMode
+		{
+			FinalColour,
+			DepthBuffer
+		};
+
 		//------ Own Functions ------
 		float Calculate2DCrossProduct(const Vector3& a, const Vector3& b, const Vector2& c);
+		float Remap(float value, float inputMin, float inputMax, float outputMin, float outputMax);
 
 		bool IsPixelInTriangle(const Vector2& p, const std::vector<Vertex>& vertex, const int index);
 
@@ -50,7 +61,10 @@ namespace dae
 		void TriangleHandeling(int triangleIdx, const Mesh& mesh_transformed);
 
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
-		void VertexTransformationFunction(const std::vector<Mesh>& meshes_in, std::vector<Mesh>& meshes_out) const;
+		void VertexTransformationFunction(std::vector<Mesh>& meshes_in) const;
+
+		void ClippingTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2);
+		void RenderModeCycling();
 
 	private:
 		SDL_Window* m_pWindow{};
@@ -67,5 +81,7 @@ namespace dae
 		int m_Height{};
 
 		Texture* m_pTexture{ nullptr };
+
+		RenderMode m_RenderMode{};
 	};
 }
