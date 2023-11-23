@@ -116,7 +116,7 @@ namespace dae
 
 			if ((mouseState & SDL_BUTTON_LMASK) != 0 && (mouseState & SDL_BUTTON_RMASK) != 0)
 			{
-				origin += up * speed * mouseY * deltaTime;
+				origin += up * speed * float(mouseY) * deltaTime;
 			}
 			else if ((mouseState & SDL_BUTTON_LMASK) != 0)
 			{

@@ -42,7 +42,8 @@ namespace dae
 
 		void Render_W2();
 
-		void Render_W3();
+		void RenderQuad_W3();
+		void RenderMesh_W3();
 
 		//------ Enum Class ------
 		enum RenderMode
@@ -53,7 +54,7 @@ namespace dae
 
 		//------ Own Functions ------
 		float Calculate2DCrossProduct(const Vector3& a, const Vector3& b, const Vector2& c);
-		float Remap(float value, float inputMin, float inputMax, float outputMin, float outputMax);
+		float Remap(float value, float inputMin, float inputMax);
 
 		bool IsPixelInTriangle(const Vector2& p, const std::vector<Vertex>& vertex, const int index);
 
@@ -63,7 +64,6 @@ namespace dae
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
 		void VertexTransformationFunction(std::vector<Mesh>& meshes_in) const;
 
-		void ClippingTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2);
 		void RenderModeCycling();
 
 	private:
@@ -81,6 +81,7 @@ namespace dae
 		int m_Height{};
 
 		Texture* m_pTexture{ nullptr };
+		std::vector<Mesh> m_MeshesObject;
 
 		RenderMode m_RenderMode{};
 	};

@@ -17,7 +17,7 @@ namespace dae
 		{
 #ifdef DISABLE_OBJ
 
-			//TODO: Enable the code below after uncommenting all the vertex attributes of DataTypes::Vertex
+			//Enable the code below after uncommenting all the vertex attributes of DataTypes::Vertex
 			// >> Comment/Remove '#define DISABLE_OBJ'
 			assert(false && "OBJ PARSER not enabled! Check the comments in Utils::ParseOBJ");
 

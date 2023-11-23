@@ -165,8 +165,8 @@ namespace dae {
 		const float A{ far / (far - near) };
 		const float B{ -(far * near) / (far - near) };
 
-		return { Vector4{ 1 / (aspect * fov), 0, 0, 0 },
-			     Vector4{ 0, 1 / fov, 0, 0 },
+		return { Vector4{ 1.f / (aspect * fov), 0, 0, 0 },
+			     Vector4{ 0, 1.f / fov, 0, 0 },
 			     Vector4{ 0, 0, A, 1 },
 			     Vector4{ 0, 0, B, 0 } };
 	}
