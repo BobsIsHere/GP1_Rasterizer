@@ -24,7 +24,7 @@ namespace dae
 	{
 		//Load SDL_Surface using IMG_LOAD
 		//Create & Return a new Texture Object (using SDL_Surface)
-		SDL_Surface* texturePtr{ IMG_Load(path.data())};
+		SDL_Surface* texturePtr{ IMG_Load(path.c_str())};
 
 		//if IMG_Load fails -> function will return nullptr
 		if (!texturePtr)
@@ -48,10 +48,10 @@ namespace dae
 
 		SDL_GetRGB(m_SurfacePixelsPtr[pIndex], m_SurfacePtr->format, &r, &g, &b);
 
-		float rFloat{ r / 255.f };
-		float gFloat{ g / 255.f };
-		float bFloat{ b / 255.f };
+		float rFloat{ r / 255.f }; 
+		float gFloat{ g / 255.f }; 
+		float bFloat{ b / 255.f }; 
 
-		return ColorRGB{ rFloat,gFloat,bFloat };
+		return ColorRGB{ rFloat,gFloat,bFloat }; 
 	}
 }

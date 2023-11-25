@@ -44,7 +44,7 @@ namespace dae
 
 			origin = _origin;
 
-			speed = 10.f;
+			speed = 20.f;
 		}
 
 		void CalculateViewMatrix()
@@ -73,8 +73,8 @@ namespace dae
 		{
 			//ProjectionMatrix => Matrix::CreatePerspectiveFovLH(...)
 			//DirectX Implementation => https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dxmatrixperspectivefovlh
-			const float near{ 0.1f };
-			const float far{ 100.f };
+			const float near{ 1.f };
+			const float far{ 1000.f };
 
 			projectionMatrix = Matrix::CreatePerspectiveFovLH(fov, aspectRatio, near, far);
 		}

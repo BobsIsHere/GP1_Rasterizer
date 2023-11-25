@@ -64,6 +64,7 @@ namespace dae
 		void VertexTransformationFunction(const std::vector<Vertex>& vertices_in, std::vector<Vertex>& vertices_out) const;
 		void VertexTransformationFunction(std::vector<Mesh>& meshes_in) const;
 
+		void ProcessRenderedTriangle(const Vertex_Out& v0, const Vertex_Out& v1, const Vertex_Out& v2, float w0, float w1, float w2, int px, int py);
 		void RenderModeCycling();
 
 	private:
