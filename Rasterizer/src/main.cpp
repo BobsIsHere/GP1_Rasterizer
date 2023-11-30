@@ -71,6 +71,18 @@ int main(int argc, char* args[])
 				{
 					pRenderer->RenderModeCycling();
 				}
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F5)
+				{
+					pRenderer->SetIsRotating();
+				}
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F6) 
+				{
+					pRenderer->SetIsShowingNormalMap();
+				}
+				else if (e.key.keysym.scancode == SDL_SCANCODE_F7) 
+				{
+					pRenderer->ShadingModeCycling();
+				}
 				break;
 			}
 		}
