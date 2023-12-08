@@ -34,16 +34,16 @@ namespace dae
 		bool SaveBufferToImage() const;
 
 		//------ Render Functions ------
-		void Render_W1_Part1();
-		void Render_W1_Part2();
-		void Render_W1_Part3();
-		void Render_W1_Part4();
-		void Render_W1_Part5();
+		//void Render_W1_Part1();
+		//void Render_W1_Part2();
+		//void Render_W1_Part3();
+		//void Render_W1_Part4();
+		//void Render_W1_Part5();
 
-		void Render_W2();
+		//void Render_W2();
 
-		void RenderQuad_W3();
-		void RenderMesh_W3();
+		//void RenderQuad_W3();
+		//void RenderMesh_W3();
 
 		void RenderMesh_W4();
 

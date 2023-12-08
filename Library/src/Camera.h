@@ -64,7 +64,7 @@ namespace dae
 				Vector4{origin, 1}
 			};
 
-			//ViewMatrix => Matrix::CreateLookAtLH(...) [not implemented yet]
+			//ViewMatrix => Matrix::CreateLookAtLH(...)
 			//viewMatrix = Matrix::CreateLookAtLH(origin, forward, up);
 			viewMatrix = invViewMatrix.Inverse();
 		}
